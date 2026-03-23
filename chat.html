@@ -1,0 +1,535 @@
+{% extends "base.html" %}
+{% block title %}NexChat{% endblock %}
+{% block content %}
+<div class="app">
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo-small">
+        <svg width="32" height="32" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="#6C63FF"/><path d="M18 28h64v10H18zM18 46h48v10H18zM18 64h36v10H18z" fill="white" opacity=".9"/><circle cx="80" cy="70" r="12" fill="#43D9AD"/></svg>
+        <span>NexChat</span>
+      </div>
+      <div class="header-actions">
+        <a href="{{ url_for('projects') }}" class="icon-btn" title="Projects">📊</a>
+        <button class="icon-btn" onclick="openNewGroupModal()" title="New Group">➕</button>
+        <a href="{{ url_for('logout') }}" class="icon-btn" title="Logout">🚪</a>
+      </div>
+    </div>
+
+    <div class="search-bar">
+      <span>🔍</span>
+      <input type="text" id="searchInput" placeholder="Search..." oninput="filterChats(this.value)"/>
+    </div>
+
+    <div class="tab-bar">
+      <button class="tab active" onclick="switchTab('groups', this)">Groups</button>
+      <button class="tab" onclick="switchTab('dms', this)">Messages</button>
+    </div>
+
+    <div id="tab-groups" class="chat-list">
+      {% for group in groups %}
+      <div class="chat-item" onclick="openGroup({{ group.id }}, '{{ group.name }}', '{{ group.icon_color }}')" data-id="{{ group.id }}" data-type="group">
+        <div class="chat-avatar" style="background:{{ group.icon_color }}">{{ group.name[0].upper() }}</div>
+        <div class="chat-info">
+          <div class="chat-name">{{ group.name }}</div>
+          <div class="chat-preview">{{ group.description or 'Group chat' }}</div>
+        </div>
+      </div>
+      {% endfor %}
+      {% if not groups %}
+      <div class="empty-state">
+        <div style="font-size:2rem">💬</div>
+        <p>Abhi koi group nahi.<br>+ dabao group banao!</p>
+      </div>
+      {% endif %}
+    </div>
+
+    <div id="tab-dms" class="chat-list" style="display:none;">
+      {% for user in users %}
+      <div class="chat-item" onclick="openDM({{ user.id }}, '{{ user.display_name }}', '{{ user.avatar_color }}')" data-id="{{ user.id }}" data-type="dm">
+        <div class="chat-avatar" style="background:{{ user.avatar_color }}">
+          {{ user.display_name[0].upper() }}
+          <span class="online-dot {% if user.is_online %}active{% endif %}" id="dot-{{ user.id }}"></span>
+        </div>
+        <div class="chat-info">
+          <div class="chat-name">{{ user.display_name }}</div>
+          <div class="chat-preview">@{{ user.username }}</div>
+        </div>
+      </div>
+      {% endfor %}
+      {% if not users %}
+      <div class="empty-state">
+        <div style="font-size:2rem">👥</div>
+        <p>Koi aur user nahi.</p>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="user-bar">
+      <div class="chat-avatar small" style="background:{{ current_user.avatar_color }}">{{ current_user.display_name[0].upper() }}</div>
+      <div>
+        <div style="font-weight:600;font-size:.9rem">{{ current_user.display_name }}</div>
+        <div style="font-size:.75rem;color:var(--text-muted)">@{{ current_user.username }}</div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="chat-area" id="chatArea">
+    <div class="empty-chat" id="emptyChat">
+      <div class="empty-chat-inner">
+        <svg width="80" height="80" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="#6C63FF" opacity=".15"/><path d="M20 30h60v10H20zM20 48h45v10H20zM20 66h35v10H20z" fill="#6C63FF" opacity=".5"/><circle cx="78" cy="72" r="12" fill="#43D9AD" opacity=".6"/></svg>
+        <h2>NexChat mein khush aamdeed!</h2>
+        <p>Koi group ya message select karo</p>
+      </div>
+    </div>
+
+    <div class="chat-window" id="chatWindow" style="display:none;">
+      <div class="chat-header">
+        <button class="icon-btn" id="backBtn" onclick="closeChat()" style="display:none;">←</button>
+        <div class="chat-avatar" id="chatAvatar" style="width:38px;height:38px;font-size:.95rem;">G</div>
+        <div>
+          <div class="chat-header-name" id="chatName">Chat</div>
+          <div class="chat-header-sub" id="chatSub">...</div>
+        </div>
+      </div>
+
+      <div class="messages-container" id="messagesContainer"></div>
+
+      <div class="typing-bar" id="typingBar" style="display:none;">
+        <span id="typingText"></span>
+        <div class="typing-dots"><span></span><span></span><span></span></div>
+      </div>
+
+      <div class="file-preview-bar" id="filePreviewBar" style="display:none;">
+        <div id="filePreviewContent"></div>
+        <button onclick="clearFilePreview()" class="clear-file">✕</button>
+      </div>
+
+      <div class="input-bar">
+        <label class="attach-btn" title="File attach karo">
+          📎
+          <input type="file" id="fileInput" style="display:none;" onchange="handleFileSelect(this)" accept="image/*,.pdf,.doc,.docx,.txt,.zip"/>
+        </label>
+        <div class="msg-input-wrap">
+          <textarea id="msgInput" placeholder="Message type karo..." rows="1"
+            onkeydown="handleEnter(event)" oninput="autoResize(this); sendTyping();"></textarea>
+        </div>
+        <button class="send-btn" onclick="sendMessage()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="modal-overlay" id="newGroupModal" onclick="closeNewGroupModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Naya Group Banao</h3>
+      <button onclick="closeNewGroupModal()" class="modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-group">
+        <label>Group Ka Naam</label>
+        <input type="text" id="groupName" placeholder="e.g. Team Alpha" class="modal-input"/>
+      </div>
+      <div class="field-group">
+        <label>Description</label>
+        <input type="text" id="groupDesc" placeholder="Group ke baare mein..." class="modal-input"/>
+      </div>
+      <div class="field-group">
+        <label>Members Add Karo</label>
+        <div id="membersList" class="members-list">
+          {% for user in users %}
+          <label class="member-check">
+            <input type="checkbox" value="{{ user.id }}"/>
+            <div class="chat-avatar small" style="background:{{ user.avatar_color }}">{{ user.display_name[0].upper() }}</div>
+            <span>{{ user.display_name }} <small>@{{ user.username }}</small></span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      <button class="btn-primary" onclick="createGroup()">Group Banao</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+var ME_ID = {{ current_user.id }};
+var ME_NAME = "{{ current_user.display_name }}";
+var ME_COLOR = "{{ current_user.avatar_color }}";
+
+var socket;
+var currentRoom = null;
+var currentRoomType = null;
+var pendingFile = null;
+var typingTimer = null;
+
+function initSocket() {
+  socket = io();
+
+  socket.on('connect', function() {
+    console.log('Socket connected');
+  });
+
+  socket.on('new_message', function(msg) {
+    var isCurrentChat = false;
+
+    if (currentRoomType === 'group' && msg.room_type === 'group') {
+      isCurrentChat = (String(msg.room_id) === String(currentRoom));
+    } else if (currentRoomType === 'dm' && msg.room_type === 'dm') {
+      isCurrentChat = (String(msg.room_id) === String(currentRoom)) ||
+                      (String(msg.sender_id) === String(currentRoom));
+    }
+
+    if (isCurrentChat) {
+      if (Number(msg.sender_id) === Number(ME_ID)) {
+        return;
+      }
+      appendMessage(msg, false);
+    }
+  });
+
+  socket.on('typing_indicator', function(data) {
+    if (String(data.room_id) === String(currentRoom)) {
+      var bar = document.getElementById('typingBar');
+      document.getElementById('typingText').textContent = data.user_name + ' likh raha hai';
+      bar.style.display = 'flex';
+      clearTimeout(typingTimer);
+      typingTimer = setTimeout(function() {
+        bar.style.display = 'none';
+      }, 2500);
+    }
+  });
+
+  socket.on('user_status', function(data) {
+    var dot = document.getElementById('dot-' + data.user_id);
+    if (dot) {
+      if (data.is_online) {
+        dot.classList.add('active');
+      } else {
+        dot.classList.remove('active');
+      }
+    }
+  });
+}
+
+function openGroup(id, name, color) {
+  currentRoom = id;
+  currentRoomType = 'group';
+  document.getElementById('chatAvatar').textContent = name[0].toUpperCase();
+  document.getElementById('chatAvatar').style.background = color;
+  document.getElementById('chatName').textContent = name;
+  document.getElementById('chatSub').textContent = 'Group Chat';
+  showChatWindow();
+  socket.emit('join_group', { group_id: id });
+  loadMessages('/api/messages/' + id);
+  highlightItem('group', id);
+}
+
+function openDM(id, name, color) {
+  currentRoom = id;
+  currentRoomType = 'dm';
+  document.getElementById('chatAvatar').textContent = name[0].toUpperCase();
+  document.getElementById('chatAvatar').style.background = color;
+  document.getElementById('chatName').textContent = name;
+  document.getElementById('chatSub').textContent = 'Direct Message';
+  showChatWindow();
+  socket.emit('join_dm', { user_id: id });
+  loadMessages('/api/dm/' + id);
+  highlightItem('dm', id);
+}
+
+function highlightItem(type, id) {
+  var items = document.querySelectorAll('.chat-item');
+  for (var i = 0; i < items.length; i++) {
+    items[i].classList.remove('active');
+  }
+  var el = document.querySelector('.chat-item[data-id="' + id + '"][data-type="' + type + '"]');
+  if (el) el.classList.add('active');
+}
+
+function showChatWindow() {
+  document.getElementById('emptyChat').style.display = 'none';
+  document.getElementById('chatWindow').style.display = 'flex';
+  if (window.innerWidth <= 768) {
+    document.getElementById('backBtn').style.display = 'flex';
+  }
+}
+
+function closeChat() {
+  document.getElementById('emptyChat').style.display = 'flex';
+  document.getElementById('chatWindow').style.display = 'none';
+  currentRoom = null;
+  currentRoomType = null;
+}
+
+function loadMessages(url) {
+  var container = document.getElementById('messagesContainer');
+  container.innerHTML = '<div class="loading-msgs">Messages load ho rahe hain...</div>';
+
+  fetch(url)
+    .then(function(res) {
+      return res.json();
+    })
+    .then(function(msgs) {
+      container.innerHTML = '';
+      if (!msgs || msgs.length === 0) {
+        container.innerHTML = '<div class="no-msgs">Koi message nahi. Pehla message bhejo!</div>';
+        return;
+      }
+      for (var i = 0; i < msgs.length; i++) {
+        appendMessage(msgs[i], true);
+      }
+      scrollToBottom();
+    })
+    .catch(function(e) {
+      console.error(e);
+      container.innerHTML = '<div class="no-msgs" style="color:#FF6584">Messages load nahi hue. Refresh karo.</div>';
+    });
+}
+
+function appendMessage(msg, initial) {
+  var container = document.getElementById('messagesContainer');
+  var noMsg = container.querySelector('.no-msgs');
+  if (noMsg) noMsg.remove();
+  var loadMsg = container.querySelector('.loading-msgs');
+  if (loadMsg) loadMsg.remove();
+
+  var isMe = (Number(msg.sender_id) === Number(ME_ID));
+  var div = document.createElement('div');
+  div.className = 'message ' + (isMe ? 'mine' : 'theirs');
+
+  var mediaHTML = '';
+  if (msg.file_path) {
+    if (msg.file_type === 'image') {
+      mediaHTML = '<a href="' + msg.file_path + '" target="_blank"><img src="' + msg.file_path + '" class="msg-image" alt="image"/></a>';
+    } else {
+      var icon = msg.file_type === 'video' ? '🎥' : msg.file_type === 'audio' ? '🎵' : '📄';
+      mediaHTML = '<a href="' + msg.file_path + '" target="_blank" class="file-link">' + icon + ' ' + escapeHtml(msg.file_name) + '</a>';
+    }
+  }
+
+  var senderHTML = '';
+  if (!isMe) {
+    senderHTML = '<div class="msg-sender" style="color:' + msg.sender_color + '">' + escapeHtml(msg.sender_name) + '</div>';
+  }
+
+  var textHTML = '';
+  if (msg.content) {
+    textHTML = '<span class="msg-text">' + escapeHtml(msg.content) + '</span>';
+  }
+
+  div.innerHTML = senderHTML +
+    '<div class="msg-bubble">' +
+      mediaHTML +
+      textHTML +
+      '<span class="msg-time">' + msg.time + '</span>' +
+    '</div>';
+
+  container.appendChild(div);
+  if (!initial) scrollToBottom();
+}
+
+function sendMessage() {
+  var input = document.getElementById('msgInput');
+  var content = input.value.trim();
+  if (!content && !pendingFile) return;
+  if (!currentRoom) return;
+
+  var now = new Date();
+  var hh = String(now.getHours()).padStart(2, '0');
+  var mm = String(now.getMinutes()).padStart(2, '0');
+  var timeStr = hh + ':' + mm;
+
+  appendMessage({
+    content: content,
+    file_path: pendingFile ? pendingFile.file_path : '',
+    file_name: pendingFile ? pendingFile.file_name : '',
+    file_type: pendingFile ? pendingFile.file_type : '',
+    sender_id: ME_ID,
+    sender_name: ME_NAME,
+    sender_color: ME_COLOR,
+    time: timeStr
+  }, false);
+
+  var msgData = {
+    type: currentRoomType,
+    content: content,
+    file_path: pendingFile ? pendingFile.file_path : '',
+    file_name: pendingFile ? pendingFile.file_name : '',
+    file_type: pendingFile ? pendingFile.file_type : ''
+  };
+
+  if (currentRoomType === 'group') {
+    msgData.group_id = currentRoom;
+  } else {
+    msgData.to_user_id = currentRoom;
+  }
+
+  socket.emit('send_message', msgData);
+  input.value = '';
+  input.style.height = 'auto';
+  clearFilePreview();
+  scrollToBottom();
+}
+
+function sendTyping() {
+  if (!currentRoom || !socket) return;
+  var data = { type: currentRoomType };
+  if (currentRoomType === 'group') {
+    data.group_id = currentRoom;
+  } else {
+    data.to_user_id = currentRoom;
+  }
+  socket.emit('typing', data);
+}
+
+function handleFileSelect(input) {
+  var file = input.files[0];
+  if (!file) return;
+
+  var formData = new FormData();
+  formData.append('file', file);
+
+  var bar = document.getElementById('filePreviewBar');
+  var content = document.getElementById('filePreviewContent');
+  content.innerHTML = '<span>Upload ho raha hai...</span>';
+  bar.style.display = 'flex';
+
+  fetch('/api/upload', { method: 'POST', body: formData })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (data.error) { alert(data.error); clearFilePreview(); return; }
+      pendingFile = data;
+      if (data.file_type === 'image') {
+        content.innerHTML = '<img src="' + data.file_path + '" style="height:52px;border-radius:8px;"/> <span>' + escapeHtml(data.file_name) + '</span>';
+      } else {
+        content.innerHTML = '<span style="font-size:1.4rem">📄</span> <span>' + escapeHtml(data.file_name) + '</span>';
+      }
+    })
+    .catch(function() {
+      alert('Upload fail! Dobara try karo.');
+      clearFilePreview();
+    });
+
+  input.value = '';
+}
+
+function clearFilePreview() {
+  pendingFile = null;
+  document.getElementById('filePreviewBar').style.display = 'none';
+  document.getElementById('filePreviewContent').innerHTML = '';
+}
+
+function handleEnter(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function scrollToBottom() {
+  var c = document.getElementById('messagesContainer');
+  c.scrollTop = c.scrollHeight;
+}
+
+function escapeHtml(s) {
+  if (!s) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br>');
+}
+
+function switchTab(tab, btn) {
+  var tabs = document.querySelectorAll('.tab');
+  for (var i = 0; i < tabs.length; i++) {
+    tabs[i].classList.remove('active');
+  }
+  btn.classList.add('active');
+  document.getElementById('tab-groups').style.display = tab === 'groups' ? 'block' : 'none';
+  document.getElementById('tab-dms').style.display = tab === 'dms' ? 'block' : 'none';
+}
+
+function filterChats(q) {
+  var items = document.querySelectorAll('.chat-item');
+  for (var i = 0; i < items.length; i++) {
+    var name = items[i].querySelector('.chat-name').textContent.toLowerCase();
+    items[i].style.display = name.includes(q.toLowerCase()) ? '' : 'none';
+  }
+}
+
+function openNewGroupModal() {
+  document.getElementById('newGroupModal').style.display = 'flex';
+}
+
+function closeNewGroupModal(e) {
+  if (!e || e.target === document.getElementById('newGroupModal')) {
+    document.getElementById('newGroupModal').style.display = 'none';
+  }
+}
+
+function createGroup() {
+  var name = document.getElementById('groupName').value.trim();
+  if (!name) { alert('Group ka naam daalna zaroori hai!'); return; }
+  var desc = document.getElementById('groupDesc').value.trim();
+  var checkboxes = document.querySelectorAll('#membersList input:checked');
+  var members = [];
+  for (var i = 0; i < checkboxes.length; i++) {
+    members.push(parseInt(checkboxes[i].value));
+  }
+
+  fetch('/api/create_group', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: name, description: desc, members: members })
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    if (data.error) { alert(data.error); return; }
+
+    var list = document.getElementById('tab-groups');
+    var emptyState = list.querySelector('.empty-state');
+    if (emptyState) emptyState.remove();
+
+    var item = document.createElement('div');
+    item.className = 'chat-item';
+    item.setAttribute('data-id', data.id);
+    item.setAttribute('data-type', 'group');
+    var gId = data.id;
+    var gName = data.name;
+    var gColor = data.icon_color;
+    item.onclick = function() { openGroup(gId, gName, gColor); };
+    item.innerHTML =
+      '<div class="chat-avatar" style="background:' + data.icon_color + '">' + data.name[0].toUpperCase() + '</div>' +
+      '<div class="chat-info"><div class="chat-name">' + escapeHtml(data.name) + '</div>' +
+      '<div class="chat-preview">' + (desc || 'Group chat') + '</div></div>';
+    list.prepend(item);
+
+    document.getElementById('groupName').value = '';
+    document.getElementById('groupDesc').value = '';
+    var allChecks = document.querySelectorAll('#membersList input');
+    for (var i = 0; i < allChecks.length; i++) {
+      allChecks[i].checked = false;
+    }
+    closeNewGroupModal();
+    openGroup(data.id, data.name, data.icon_color);
+  })
+  .catch(function() {
+    alert('Group banana fail! Dobara try karo.');
+  });
+}
+
+initSocket();
+</script>
+{% endblock %}

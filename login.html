@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Login — NexChat{% endblock %}
+{% block content %}
+<div class="auth-page">
+  <div class="auth-bg">
+    <div class="bg-orb orb1"></div>
+    <div class="bg-orb orb2"></div>
+    <div class="bg-orb orb3"></div>
+  </div>
+  <div class="auth-card">
+    <div class="auth-logo">
+      <svg width="52" height="52" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <rect width="100" height="100" rx="22" fill="#6C63FF"/>
+        <path d="M20 30h60v10H20zM20 48h45v10H20zM20 66h35v10H20z" fill="white" opacity=".9"/>
+        <circle cx="78" cy="72" r="12" fill="#43D9AD"/>
+      </svg>
+      <h1>NexChat</h1>
+      <p>Apne account mein login karo</p>
+    </div>
+    <form method="POST" action="{{ url_for('login') }}" class="auth-form">
+      <div class="field-group">
+        <label>Username</label>
+        <div class="input-wrap">
+          <span class="input-icon">@</span>
+          <input type="text" name="username" placeholder="apna username" required autocomplete="username"/>
+        </div>
+      </div>
+      <div class="field-group">
+        <label>Password</label>
+        <div class="input-wrap">
+          <span class="input-icon">🔒</span>
+          <input type="password" name="password" placeholder="password daalo" required/>
+        </div>
+      </div>
+      <button type="submit" class="btn-primary">Login Karo →</button>
+    </form>
+    <div class="auth-switch">
+      Account nahi hai? <a href="{{ url_for('register') }}">Register Karo</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
